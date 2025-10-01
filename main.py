@@ -28,6 +28,7 @@ dictionary.
 
     return results
 
+
 from modules.calculate_quality import calculate_quality
 from modules.calculate_gc_content impoirt calculate_gc_content
 

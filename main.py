@@ -65,9 +65,3 @@ def filter_fastq(sequences, **kwargs):
         if current_quality_score <= quality_threshold:
             continue
         good_results[key_name] = current_sequence
-
-""" if __name__ == "__main__":
-    args = sys.argv[1:-1]      
-    tool = sys.argv[-1]        
-    output = run_dna_rna_tools(*args, tool=tool)
-    print(output)         """

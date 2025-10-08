@@ -7,6 +7,13 @@ from modules.reverse import reverse
 from modules.raw_toolbox import raw_toolbox
 from modules.complement_and_reverse import complement, reverse_complement
 from modules.is_palindrome import is_palindrome
+from modules.calculate_quality import calculate_quality
+from modules.calculate_gc_content impoirt calculate_gc_content
+from modules.fastq_to_dict import fastq_to dict
+from modules.filtered_to_fastq import filtered_to_fastq
+from modules.convert_multiline_fasta_to_oneline import convert_multiline_fasta_to_oneline as fa_oneline
+from modules.parse_blast_results import parse_blast_results
+from modules.extract_neighbor_genes import extract_neighbor_genes
 
 
 def run_dna_rna_tools(*args):
@@ -29,11 +36,6 @@ dictionary.
 
     return results
 
-
-from modules.calculate_quality import calculate_quality
-from modules.calculate_gc_content impoirt calculate_gc_content
-from modules.fastq_to_dict import fastq_to dict
-from modules.filtered_to_fastq import filtered_to_fastq
 
 fastq_toolbox = {
     "calculate_gc" : calculate_gc_content,
@@ -70,7 +72,7 @@ def filter_fastq(sequences, **kwargs):
         good_results[key_name] = (current_sequence, current_quality)
 
 
-def main(input_fastq, output_fastq):
+def fastq_filter_main(input_fastq, output_fastq):
 """   
 Performs filtration with given input file, process results to 
 output fastq file.   
@@ -85,3 +87,35 @@ output fastq file.
     )
 
     filtered_to_fastq(filtered_sequences, output_fastq)
+
+def convert_fasta():
+"""
+Converts multiline reads from fasta line to one line, saves to fasta file.
+"""
+    input_fasta = "data/input.fasta"
+    output_fasta = "data/output.fasta"
+    result_file = fa_oneline(input_fasta, output_fasta)
+    print(f"Converted FASTA saved to {result_file}")
+
+
+def parse_blast():
+    input_file = "blast_results.txt"
+    output_file = "best_hits.txt"
+
+    parse_blast_results(input_file, output_file)
+
+
+def extract_neighbors():
+    input_gbk = "ecoli.gbk"          
+    genes_of_interest = ["blaTEM"] 
+    output_fasta = "neighbors_only.fasta"
+
+    extract_neighbor_genes(
+        input_gbk=input_gbk,
+        genes=genes_of_interest,
+        n_before=2,
+        n_after=2,
+        output_fasta=output_fasta
+    )
+
+    print(f"Neighboring genes were extracted into {output_fasta}")

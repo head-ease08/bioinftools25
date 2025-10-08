@@ -23,6 +23,21 @@ The script has two main modes of operation:
         *   **Quality**: Keeps sequences with an average Phred33 quality score above or equal to a given threshold.
     *   Saves the filtered sequences in FASTA format.
 
+3. **FASTA Processing (`fasta`)**:
+   *   Converts multiline FASTA sequences into single-line format.
+   *   Useful for preparing data for BLAST and other downstream analysis.
+
+4. **BLAST Results Parsing (`blast`)**:
+   *   Reads BLAST txt output.
+   *   Extracts the best hit (first Description per query).
+   *   Saves results as a sorted list in a text file.
+
+5. **GenBank Neighbor Extraction (`gbk`)**:
+   *   Reads annotated genome files in GBK format.
+   *   Finds neighbor genes around the specified gene(s) of interest.
+   *   Extracts their protein sequences (`/translation`) into FASTA format.
+   *   Gene(s) of interest are excluded, only neighbors are saved.
+
 ## ⚙️ Installation and Project Structure
 
 This script requires **Python 3.6+**. No external libraries need to be installed. Don't forget to make `main.py` executable!
@@ -83,3 +98,37 @@ FASTQ file filtering: coming soon!
 | `--gc_bounds`         | (Optional) GC content range in percent (min max). Default: `0 100`. A single value can be passed to set only the upper bound.           | `--gc_bounds 40 60`         |
 | `--length_bounds`     | (Optional) Sequence length range (min max). Default: `0 4294967296`. A single value can be passed to set only the upper bound.        | `--length_bounds 100 150`   |
 | `--quality_threshold` | (Optional) Minimum average Phred33 quality score. Default: `0`.                                                                          | `--quality_threshold 25`    |
+
+
+## FASTQ Processing
+
+Convert between FASTQ file and dictionary representation, and save filtered results:
+
+```bash
+python main.py filter --input_fastq my_reads.fastq --output_fastq filtered.fastq --gc_bounds 40 60 --quality_threshold 25
+```
+
+## FASTA Utilities
+
+Convert multiline FASTA to one-line sequences:
+
+```bash
+python main.py fasta input.fasta output.fasta
+```
+
+## BLAST Results Parsing
+
+Parse BLAST output to extract best hits:
+
+```bash
+python main.py blast example_blast_results.txt best_hits.txt
+```
+
+
+## GenBank Neighbor Extraction
+
+Extract protein sequences of genes neighboring genes of interest:
+
+``` bash
+python main.py gbk ecoli.gbk --genes blaTEM --n_before 2 --n_after 2 --output neighbors.fasta
+```

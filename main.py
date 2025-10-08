@@ -69,7 +69,12 @@ def filter_fastq(sequences, **kwargs):
             continue
         good_results[key_name] = (current_sequence, current_quality)
 
+
 def main(input_fastq, output_fastq):
+"""   
+Performs filtration with given input file, process results to 
+output fastq file.   
+"""
     sequences = fastq_to_dict(input_fastq)
 
     filtered_sequences = filter_fastq(

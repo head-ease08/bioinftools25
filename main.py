@@ -8,7 +8,7 @@ from modules.raw_toolbox import raw_toolbox
 from modules.complement_and_reverse import complement, reverse_complement
 from modules.is_palindrome import is_palindrome
 from modules.calculate_quality import calculate_quality
-from modules.calculate_gc_content impoirt calculate_gc_content
+from modules.calculate_gc_content import calculate_gc_content
 from modules.fastq_to_dict import fastq_to dict
 from modules.filtered_to_fastq import filtered_to_fastq
 from modules.convert_multiline_fasta_to_oneline import convert_multiline_fasta_to_oneline as fa_oneline
@@ -16,19 +16,18 @@ from modules.parse_blast_results import parse_blast_results
 from modules.extract_neighbor_genes import extract_neighbor_genes
 
 
-def run_dna_rna_tools(*args):
-"""
-Calls module and performs it on 
-input string sequences. Modules are stored in 
-dictionary.
-"""
-    *seq
+def run_dna_rna_tools(*seqs: str, tool: str) -> list:
+    """
+    Calls module and performs it on 
+    input string sequences. Modules are stored in 
+    dictionary.
+    """
     tool_function = raw_toolbox.get(tool)
     if not tool_function:
         available_tools = ", ".join(raw_toolbox.keys())
         return f"Tool {tool} is not available. Choose from: {available_tools}" # фигурные строки в f-string в незаивсимости от типа объекта
     results = []
-    for sequence in args:
+    for sequence in seqs:
         if not is_nucleic_acid(sequence):
             results.append(f"Invalid sequence: {sequence}")
         else:

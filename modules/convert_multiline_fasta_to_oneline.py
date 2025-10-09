@@ -1,8 +1,8 @@
 def convert_multiline_fasta_to_oneline(input_fasta: str, output_fasta = None: str) -> str:
-"""
-Converts fasta with multiple lines per read to fasta
-with one line per read
-"""
+    """
+    Converts fasta with multiple lines per read to fasta
+    with one line per read
+    """
     if output_fasta is None:
         extensions = ("fasta","fa")
         if input_fasta.endswith(extensions):

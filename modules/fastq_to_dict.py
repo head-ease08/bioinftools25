@@ -1,9 +1,9 @@
 def get_fastq(input_fastq: str) -> dict:
-"""
-This function takes file and converts it in
-dictionary suitable for filter_fastq function
-line by line
-""" 
+    """
+    This function takes file and converts it in
+    dictionary suitable for filter_fastq function
+    line by line
+    """ 
 
     sequences = {}
     with open (input_fastq) as fastq:

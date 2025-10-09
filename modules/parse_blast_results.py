@@ -1,8 +1,8 @@
-def parse_blast_results(input_file, output_file):
-"""
-Reads BLAST txt results and extracts the best hit (first in alignments block)
-for each query. Saves unique protein descriptions in one-column file.
-"""
+def parse_blast_results(input_file: str, output_file: str) -> str:
+    """
+    Reads BLAST txt results and extracts the best hit (first in alignments block)
+    for each query. Saves unique protein descriptions in one-column file.
+    """
     best_hits = []
 
     with open(input_file, "r") as infile:

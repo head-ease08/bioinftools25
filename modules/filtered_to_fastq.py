@@ -1,7 +1,10 @@
 import os
 
 
-def filtered_to_fastq(sequences, output_fastq):
+def filtered_to_fastq(sequences: str, output_fastq:str) -> str:
+    """
+    Writes filtered reads to FASTQ file.
+    """
     output_folder = "filtered"
     os.makedirs(output_folder, exist_ok = True)
     output_path = os.path.join(output_folder, output_fastq)

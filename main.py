@@ -44,6 +44,9 @@ fastq_toolbox = {
 
 
 def filter_fastq(sequences, **kwargs):
+    """
+    Filters FASTQ files by set params
+    """
     good_results = {}
     gc_bounds = kwargs.get("gc_bounds", (0, 100))
     if isinstance (gc_bounds, (int, float)): # смотрим, число на входе или тапл, если число, делаем из него тапл с числом как верхней границей
@@ -72,11 +75,11 @@ def filter_fastq(sequences, **kwargs):
         good_results[key_name] = (current_sequence, current_quality)
 
 
-def fastq_filter_main(input_fastq, output_fastq):
-"""   
-Performs filtration with given input file, process results to 
-output fastq file.   
-"""
+def fastq_filter_main(input_fastq: str, output_fastq:str) -> str:
+    """   
+    Filter reads from a FASTQ file by GC content, length, and quality, 
+    and save the results to a new FASTQ file.
+    """
     sequences = fastq_to_dict(input_fastq)
 
     filtered_sequences = filter_fastq(
@@ -89,9 +92,9 @@ output fastq file.
     filtered_to_fastq(filtered_sequences, output_fastq)
 
 def convert_fasta():
-"""
-Converts multiline reads from fasta line to one line, saves to fasta file.
-"""
+    """
+    Converts multiline reads from fasta line to one line, saves to FASTA file.
+    """
     input_fasta = "data/input.fasta"
     output_fasta = "data/output.fasta"
     result_file = fa_oneline(input_fasta, output_fasta)
@@ -99,6 +102,9 @@ Converts multiline reads from fasta line to one line, saves to fasta file.
 
 
 def parse_blast():
+    """
+    Calls blast parsing function
+    """
     input_file = "blast_results.txt"
     output_file = "best_hits.txt"
 
@@ -106,6 +112,9 @@ def parse_blast():
 
 
 def extract_neighbors():
+    """
+    Calls function to extract neighbors from .gbk
+    """
     input_gbk = "ecoli.gbk"          
     genes_of_interest = ["blaTEM"] 
     output_fasta = "neighbors_only.fasta"

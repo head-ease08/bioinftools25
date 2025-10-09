@@ -1,4 +1,8 @@
-def extract_neighbor_genes(input_gbk, genes, output_fasta, n_before=1, n_after=1):
+def extract_neighbor_genes(input_gbk: str, genes: str, output_fasta: str, n_before=1: int, n_after=1: int) -> str:
+    """
+    Extract protein sequences of neighboring genes from a GenBank file 
+    and save them in FASTA format.
+    """
     if isinstance(genes, str):
         genes = [genes]
 

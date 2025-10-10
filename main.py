@@ -87,7 +87,6 @@ def fastq_filter_main(input_fastq: str, output_fastq:str) -> str:
         lengths_bounds=(50, 300),
         quality_threshold=20
     )
-
     filtered_to_fastq(filtered_sequences, output_fastq)
 
 def convert_fasta():

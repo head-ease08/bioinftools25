@@ -7,30 +7,33 @@ from modules.reverse import reverse
 from modules.raw_toolbox import raw_toolbox
 from modules.complement_and_reverse import complement, reverse_complement
 from modules.is_palindrome import is_palindrome
+from modules.calculate_quality import calculate_quality
+from modules.calculate_gc_content import calculate_gc_content
+from modules.fastq_to_dict import fastq_to dict
+from modules.filtered_to_fastq import filtered_to_fastq
+from modules.convert_multiline_fasta_to_oneline import convert_multiline_fasta_to_oneline as fa_oneline
+from modules.parse_blast_results import parse_blast_results
+from modules.extract_neighbor_genes import extract_neighbor_genes
 
 
-def run_dna_rna_tools(*args, tool):
-"""
-Calls module and performs it on 
-input string sequences. Modules are stored in 
-dictionary.
-"""
+def run_dna_rna_tools(*seqs: str, tool: str) -> list:
+    """
+    Calls module and performs it on 
+    input string sequences. Modules are stored in 
+    dictionary.
+    """
     tool_function = raw_toolbox.get(tool)
     if not tool_function:
         available_tools = ", ".join(raw_toolbox.keys())
         return f"Tool {tool} is not available. Choose from: {available_tools}" # фигурные строки в f-string в незаивсимости от типа объекта
     results = []
-    for sequence in args:
+    for sequence in seqs:
         if not is_nucleic_acid(sequence):
             results.append(f"Invalid sequence: {sequence}")
         else:
             results.append(tool_function(sequence))
 
     return results
-
-
-from modules.calculate_quality import calculate_quality
-from modules.calculate_gc_content impoirt calculate_gc_content
 
 
 fastq_toolbox = {
@@ -40,6 +43,9 @@ fastq_toolbox = {
 
 
 def filter_fastq(sequences, **kwargs):
+    """
+    Filters FASTQ files by set params
+    """
     good_results = {}
     gc_bounds = kwargs.get("gc_bounds", (0, 100))
     if isinstance (gc_bounds, (int, float)): # смотрим, число на входе или тапл, если число, делаем из него тапл с числом как верхней границей
@@ -65,4 +71,58 @@ def filter_fastq(sequences, **kwargs):
         current_quality_score = phred_calculator(current_quality)
         if current_quality_score <= quality_threshold:
             continue
-        good_results[key_name] = current_sequence
+        good_results[key_name] = (current_sequence, current_quality)
+
+
+def fastq_filter_main(input_fastq: str, output_fastq:str) -> str:
+    """   
+    Filter reads from a FASTQ file by GC content, length, and quality, 
+    and save the results to a new FASTQ file.
+    """
+    sequences = fastq_to_dict(input_fastq)
+
+    filtered_sequences = filter_fastq(
+        sequences,
+        gc_bounds=(40, 60),
+        lengths_bounds=(50, 300),
+        quality_threshold=20
+    )
+    filtered_to_fastq(filtered_sequences, output_fastq)
+
+def convert_fasta():
+    """
+    Converts multiline reads from fasta line to one line, saves to FASTA file.
+    """
+    input_fasta = "data/input.fasta"
+    output_fasta = "data/output.fasta"
+    result_file = fa_oneline(input_fasta, output_fasta)
+    print(f"Converted FASTA saved to {result_file}")
+
+
+def parse_blast():
+    """
+    Calls blast parsing function
+    """
+    input_file = "blast_results.txt"
+    output_file = "best_hits.txt"
+
+    parse_blast_results(input_file, output_file)
+
+
+def extract_neighbors():
+    """
+    Calls function to extract neighbors from .gbk
+    """
+    input_gbk = "ecoli.gbk"          
+    genes_of_interest = ["blaTEM"] 
+    output_fasta = "neighbors_only.fasta"
+
+    extract_neighbor_genes(
+        input_gbk=input_gbk,
+        genes=genes_of_interest,
+        n_before=2,
+        n_after=2,
+        output_fasta=output_fasta
+    )
+
+    print(f"Neighboring genes were extracted into {output_fasta}")

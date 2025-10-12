@@ -5,9 +5,9 @@ from modules.complement_and_reverse import complement, reverse_complement
 from modules.is_palindrome import is_palindrome
 
 raw_toolbox = {
-"""
-Dictionary used to call functions in main.py
-"""
+    """
+    Dictionary used to call functions in main.py
+    """
     "is_na": is_nucleic_acid,
     "transcribe": transcribe,
     "reverse": reverse,

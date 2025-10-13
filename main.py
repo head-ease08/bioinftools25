@@ -11,7 +11,7 @@ from modules.is_palindrome import is_palindrome
 
 def run_dna_rna_tools(*args, tool):
 """
-Calls module and performs it on 
+Calls module and applies it to 
 input string sequences. Modules are stored in 
 dictionary.
 """

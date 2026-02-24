@@ -1,102 +1,123 @@
 import sys
+from Bio import SeqIO
+from Bio.SeqUtils import gc_fraction
+import os
 
 
-from modules.is_nucleic_acid import is_nucleic_acid
-from modules.transcribe import transcribe
-from modules.reverse import reverse
-from modules.raw_toolbox import raw_toolbox
-from modules.complement_and_reverse import complement, reverse_complement
-from modules.is_palindrome import is_palindrome
-from modules.calculate_quality import calculate_quality
-from modules.calculate_gc_content import calculate_gc_content
-from modules.fastq_to_dict import fastq_to dict
-from modules.filtered_to_fastq import filtered_to_fastq
-from modules.convert_multiline_fasta_to_oneline import convert_multiline_fasta_to_oneline as fa_oneline
-from modules.parse_blast_results import parse_blast_results
-from modules.extract_neighbor_genes import extract_neighbor_genes
 
 
-def run_dna_rna_tools(*seqs: str, tool: str) -> list:
+def parse_blast_results(input_file: str, output_file: str) -> str:
     """
-    Calls module and performs it on 
-    input string sequences. Modules are stored in 
-    dictionary.
+    Reads BLAST txt results and extracts the best hit (first in alignments block)
+    for each query. Saves unique protein descriptions in one-column file.
     """
-    tool_function = raw_toolbox.get(tool)
-    if not tool_function:
-        available_tools = ", ".join(raw_toolbox.keys())
-        return f"Tool {tool} is not available. Choose from: {available_tools}" # фигурные строки в f-string в незаивсимости от типа объекта
-    results = []
-    for sequence in seqs:
-        if not is_nucleic_acid(sequence):
-            results.append(f"Invalid sequence: {sequence}")
-        else:
-            results.append(tool_function(sequence))
+    best_hits = []
 
-    return results
+    with open(input_file, "r") as infile:
+        lines = infile.readlines()
 
+    for i, line in enumerate(lines):
+        if line.strip().startswith("Sequences producing significant alignments:"):
+            if i + 1 < len(lines):
+                first_hit = lines[i + 1].strip()
+                if first_hit:
+                    parts = first_hit.split(maxsplit=1)
+                    if len(parts) > 1:
+                        description = parts[1]
+                    else:
+                        description = parts[0]
+                    best_hits.append(description)
 
-fastq_toolbox = {
-    "calculate_gc" : calculate_gc_content,
-    "calculate_phred" : calculate_quality,
-}
+    best_hits = sorted(set(best_hits))
 
-
-def filter_fastq(sequences, **kwargs):
-    """
-    Filters FASTQ files by set params
-    """
-    good_results = {}
-    gc_bounds = kwargs.get("gc_bounds", (0, 100))
-    if isinstance (gc_bounds, (int, float)): # смотрим, число на входе или тапл, если число, делаем из него тапл с числом как верхней границей
-        gc_bounds = (0, gc_bounds) 
-    lengths_bounds = kwargs.get("lengths_bounds", (0, 2**32)) 
-    if isinstance (lengths_bounds, (int,float)): # аналогично, сверяем именно с таплом типа данных
-        lengths_bounds = (0, lengths_bounds)
-    quality_threshold = kwargs.get("quality_threshold", 0)
-
-    for key_name, value in sequences.items():
-        
-        current_sequence, current_quality = str(value[0]),str(value[1])
-        gc_calculator = fastq_toolbox["calculate_gc"]
-        current_gc = gc_calculator(current_sequence)
-        if not is_nucleic_acid(current_sequence):
-            continue
-        if current_gc <= gc_bounds[0] or current_gc >= gc_bounds[1]: # если подходит:
-            continue
-        current_length = len(current_sequence) # отдельная функция не требуется
-        if current_length <= lengths_bounds[0] or current_length >= lengths_bounds[1]:
-            continue
-        phred_calculator = fastq_toolbox["calculate_phred"]
-        current_quality_score = phred_calculator(current_quality)
-        if current_quality_score <= quality_threshold:
-            continue
-        good_results[key_name] = (current_sequence, current_quality)
+    with open(output_file, "w") as outfile:
+        for hit in best_hits:
+            outfile.write(hit + "\n")
 
 
-def fastq_filter_main(input_fastq: str, output_fastq:str) -> str:
-    """   
-    Filter reads from a FASTQ file by GC content, length, and quality, 
-    and save the results to a new FASTQ file.
-    """
-    sequences = fastq_to_dict(input_fastq)
 
-    filtered_sequences = filter_fastq(
-        sequences,
-        gc_bounds=(40, 60),
-        lengths_bounds=(50, 300),
-        quality_threshold=20
-    )
-    filtered_to_fastq(filtered_sequences, output_fastq)
 
-def convert_fasta():
-    """
-    Converts multiline reads from fasta line to one line, saves to FASTA file.
-    """
-    input_fasta = "data/input.fasta"
-    output_fasta = "data/output.fasta"
-    result_file = fa_oneline(input_fasta, output_fasta)
-    print(f"Converted FASTA saved to {result_file}")
+
+from abc import ABC, abstractmethod
+
+class BiologicalSequence(ABC):
+    def __init__(self, sequence:str):
+        self._sequence = sequence
+
+    def __len__(self):
+        return len(self._sequence)
+    
+    def __getitem__(self, index):
+        result = self._sequence[index]
+        if isinstance(index, slice):
+            return self.__class__(result)
+        return result
+    
+    def __str__(self):
+        return self._sequence
+
+    def __repr__(self):
+        return f"{self.__class__.__name__}('{self._sequence}')"
+
+    @abstractmethod
+    def check_alphabet(self):
+        ...
+
+class NucleicAcidSequence(BiologicalSequence):
+    _alphabet = None
+    _complement_map = None  
+    
+
+    def check_alphabet(self):
+       
+        if self._alphabet is None:
+            raise NotImplementedError("Alphabet not defined")
+        return set(self._sequence).issubset(self._alphabet)
+
+    def complement(self):
+        if self._complement_map is None:
+            raise NotImplementedError("Complement map not defined")
+        return self.__class__(self._sequence.translate(self._complement_map))
+
+    def reverse(self):
+        return self.__class__(self._sequence[::-1])
+
+    def reverse_complement(self):
+        return self.complement().reverse()
+
+
+class DNASequence(NucleicAcidSequence):
+    _alphabet = set("ATGCatgc")
+    _complement_map = str.maketrans("ATGCatgc", "TACGtacg")
+
+
+    def transcribe(self):
+        rna_seq = self._sequence.replace('T', 'U').replace('t', 'u')
+        return RNASequence(rna_seq)
+
+class RNASequence(NucleicAcidSequence):
+    _alphabet = set("AUGCaugc")
+    _complement_map = str.maketrans("AUGCaugc", "UACGuacg")
+
+
+class AminoAcidSequence(BiologicalSequence):
+    _alphabet = set("ACDEFGHIKLMNPQRSTVWY")
+
+
+    def check_alphabet(self):
+        return set(self._sequence).issubset(self._alphabet)
+
+    def hydrophobic_ratio(self):
+        hlen = len(self)
+        hcnt = 0
+        for s in self._sequence:
+            if s in ("AVLIMFWP"):
+                hcnt+=1
+        return hcnt/hlen
+
+
+
+
 
 
 def parse_blast():
@@ -107,7 +128,77 @@ def parse_blast():
     output_file = "best_hits.txt"
 
     parse_blast_results(input_file, output_file)
+def extract_neighbor_genes(input_gbk: str, genes: str, output_fasta: str, n_before: int = 1, n_after: int = 1) -> str:
 
+
+    """
+    Extract protein sequences of neighboring genes from a GenBank file 
+    and save them in FASTA format.
+    """
+    if isinstance(genes, str):
+        genes = [genes]
+
+    cds_list = []
+    current_cds = {}
+    inside_cds = False
+
+    with open(input_gbk, "r") as f:
+        for line in f:
+            line = line.rstrip()
+
+            if line.strip().startswith("CDS"):
+                if current_cds:
+                    cds_list.append(current_cds)
+                current_cds = {}
+                inside_cds = True
+
+            elif inside_cds:
+                if "/gene=" in line:
+                    current_cds["gene"] = line.split("=")[1].strip('"')
+                elif "/locus_tag=" in line:
+                    current_cds["locus_tag"] = line.split("=")[1].strip('"')
+                elif "/product=" in line:
+                    current_cds["product"] = line.split("=")[1].strip('"')
+                elif "/translation=" in line:
+                    translation = line.split("=", 1)[1].strip().lstrip('"')
+                    if translation.endswith('"'):
+                        translation = translation.rstrip('"')
+                        current_cds["translation"] = translation
+                    else:
+                        seq = [translation]
+                        for next_line in f:
+                            next_line = next_line.strip()
+                            if next_line.endswith('"'):
+                                seq.append(next_line.rstrip('"'))
+                                break
+                            else:
+                                seq.append(next_line)
+                        current_cds["translation"] = "".join(seq)
+
+        if current_cds:
+            cds_list.append(current_cds)
+
+
+    extracted = []
+    for i, cds in enumerate(cds_list):
+        if cds.get("gene") in genes or cds.get("locus_tag") in genes:
+            start = max(0, i - n_before)
+            end = min(len(cds_list), i + n_after + 1)
+            for j in range(start, end):
+                if j == i:  
+                    continue
+                neighbor = cds_list[j]
+                if "translation" in neighbor:
+                    header = neighbor.get("locus_tag", neighbor.get("gene", "unknown"))
+                    product = neighbor.get("product", "")
+                    fasta_header = f">{header} {product}"
+                    extracted.append((fasta_header, neighbor["translation"]))
+
+
+    with open(output_fasta, "w") as out:
+        for header, seq in extracted:
+            out.write(header + "\n")
+            out.write(seq + "\n")
 
 def extract_neighbors():
     """
@@ -126,3 +217,42 @@ def extract_neighbors():
     )
 
     print(f"Neighboring genes were extracted into {output_fasta}")
+
+
+
+
+
+
+
+
+def filter_fastq(input_fastq, output_fastq, gc_bounds=(0, 100),
+                 length_bounds=(0, 2**32), quality_threshold=0):
+    """
+    Filters FASTQ reads using Biopython.
+    """
+    output_folder = "filtered"
+    os.makedirs(output_folder, exist_ok=True)
+    output_path = os.path.join(output_folder, output_fastq)
+
+    good_reads = []
+
+    for record in SeqIO.parse(input_fastq, "fastq"):
+        gc = gc_fraction(record.seq) * 100
+
+        seq_len = len(record)
+
+        qualities = record.letter_annotations["phred_quality"]
+        mean_quality = sum(qualities) / len(qualities)
+
+
+        if not (gc_bounds[0] <= gc <= gc_bounds[1]):
+            continue
+        if not (length_bounds[0] <= seq_len <= length_bounds[1]):
+            continue
+        if mean_quality < quality_threshold:
+            continue
+
+        good_reads.append(record)
+
+
+    SeqIO.write(good_reads, output_path, "fastq")

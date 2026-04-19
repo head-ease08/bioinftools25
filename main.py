@@ -1,10 +1,12 @@
 import sys
+import os
+import argparse
+import logging
+from abc import ABC, abstractmethod
 from Bio import SeqIO
 from Bio.SeqUtils import gc_fraction
-import os
 
-
-
+logger = logging.getLogger(__name__)
 
 def parse_blast_results(input_file: str, output_file: str) -> str:
     """
@@ -27,7 +29,11 @@ def parse_blast_results(input_file: str, output_file: str) -> str:
                     else:
                         description = parts[0]
                     best_hits.append(description)
-
+    # LOGGING  
+    if not best_hits:
+        logger.error("No best hits found in %s — output will be empty", input_file)                 
+    logger.info("Found %d unique best hits", len(best_hits))
+    
     best_hits = sorted(set(best_hits))
 
     with open(output_file, "w") as outfile:
@@ -38,7 +44,7 @@ def parse_blast_results(input_file: str, output_file: str) -> str:
 
 
 
-from abc import ABC, abstractmethod
+
 
 class BiologicalSequence(ABC):
     def __init__(self, sequence:str):
@@ -253,6 +259,98 @@ def filter_fastq(input_fastq, output_fastq, gc_bounds=(0, 100),
             continue
 
         good_reads.append(record)
-
+    
+    # LOGGING
+    logger.info("Reads passing filters: %d", len(good_reads))
 
     SeqIO.write(good_reads, output_path, "fastq")
+
+
+
+def build_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(
+        prog="biotools",
+        description="Bioinformatics utilities: BLAST parsing, neighbor extraction, FASTQ filtering",
+    )
+    subparsers = parser.add_subparsers(dest="command", required=True)
+
+    # --- blast ---
+    p_blast = subparsers.add_parser("blast", help="Parse BLAST results and extract best hits")
+    p_blast.add_argument("-i", "--input",  required=True, help="Input BLAST .txt file")
+    p_blast.add_argument("-o", "--output", required=True, help="Output file for best hits")
+
+    # --- neighbors ---
+    p_nb = subparsers.add_parser("neighbors", help="Extract neighboring genes from a GenBank file")
+    p_nb.add_argument("-i", "--input",  required=True, help="Input .gbk file")
+    p_nb.add_argument("-g", "--genes",  required=True, nargs="+", help="Gene name(s) of interest")
+    p_nb.add_argument("-o", "--output", required=True, help="Output .fasta file")
+    p_nb.add_argument("--before", type=int, default=1, help="Neighbors to take before (default: 1)")
+    p_nb.add_argument("--after",  type=int, default=1, help="Neighbors to take after (default: 1)")
+
+    # --- filter ---
+    p_fq = subparsers.add_parser("filter", help="Filter FASTQ reads by GC, length, and quality")
+    p_fq.add_argument("-i", "--input",   required=True, help="Input .fastq file")
+    p_fq.add_argument("-o", "--output",  required=True, help="Output .fastq filename (saved in filtered/)")
+    p_fq.add_argument("--gc-min",        type=float, default=0,   help="Min GC%% (default: 0)")
+    p_fq.add_argument("--gc-max",        type=float, default=100, help="Max GC%% (default: 100)")
+    p_fq.add_argument("--len-min",       type=int,   default=0,   help="Min read length (default: 0)")
+    p_fq.add_argument("--len-max",       type=int,   default=2**32, help="Max read length")
+    p_fq.add_argument("--quality",       type=float, default=0,   help="Min mean Phred quality (default: 0)")
+
+    return parser
+
+
+if __name__ == "__main__":
+    import logging
+
+    logging.basicConfig(
+        filename="biotools.log",
+        level=logging.DEBUG,
+        format="%(asctime)s [%(levelname)s] %(message)s",
+    )
+    logger = logging.getLogger(__name__)
+
+    parser = build_parser()
+    args = parser.parse_args()
+
+    try:
+        if args.command == "blast":
+            logger.info("Running BLAST parser: %s -> %s", args.input, args.output)
+            parse_blast_results(args.input, args.output)
+            logger.info("BLAST parsing complete. Output: %s", args.output)
+
+        elif args.command == "neighbors":
+            logger.info(
+                "Extracting neighbors from %s for genes %s (before=%d, after=%d)",
+                args.input, args.genes, args.before, args.after,
+            )
+            extract_neighbor_genes(
+                input_gbk=args.input,
+                genes=args.genes,
+                output_fasta=args.output,
+                n_before=args.before,
+                n_after=args.after,
+            )
+            logger.info("Neighbor extraction complete. Output: %s", args.output)
+
+        elif args.command == "filter":
+            logger.info(
+                "Filtering FASTQ %s (gc=%.1f-%.1f, len=%d-%d, quality>=%.1f)",
+                args.input, args.gc_min, args.gc_max,
+                args.len_min, args.len_max, args.quality,
+            )
+            filter_fastq(
+                input_fastq=args.input,
+                output_fastq=args.output,
+                gc_bounds=(args.gc_min, args.gc_max),
+                length_bounds=(args.len_min, args.len_max),
+                quality_threshold=args.quality,
+            )
+            logger.info("FASTQ filtering complete. Output saved in filtered/%s", args.output)
+
+    except FileNotFoundError as e:
+        logger.error("File not found: %s", e)
+        raise SystemExit(1)
+    except Exception as e:
+        logger.error("Unexpected error in command '%s': %s", args.command, e)
+        raise SystemExit(1)
